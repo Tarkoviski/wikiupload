@@ -1,0 +1,8 @@
+[WIKI]
+;Url should point to where api.php would be
+Url = 
+
+[USER]
+Username = 
+;Generate password in Special:BotPasswords
+Password = 
