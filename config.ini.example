@@ -1,6 +1,8 @@
 [WIKI]
 ;Url should point to where api.php would be
 Url = 
+;Delay in seconds between uploads
+UploadDelay = 1.5
 
 [USER]
 Username = 

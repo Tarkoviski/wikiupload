@@ -6,6 +6,7 @@ import logging
 import os
 from os import listdir
 from os.path import isfile, join
+import time
 from time import strftime
 import sys
 import requests
@@ -27,7 +28,12 @@ logging.basicConfig(
 
 
 def get_token(token_type):
-    params = {"action": "query", "meta": "tokens", "type": token_type, "format": "json"}
+    params = {
+        "action": "query",
+        "meta": "tokens",
+        "type": token_type,
+        "format": "json"
+    }
 
     request = session.post(wiki_url, params)
 
@@ -70,7 +76,9 @@ def upload_files(files, summary):
             "format": "json",
         }
 
-        params_file = {"file": (currentfile, filecontents)}
+        params_file = {
+            "file": (currentfile, filecontents)
+        }
 
         request = session.post(wiki_url, data=params, files=params_file)
 
@@ -93,6 +101,9 @@ def upload_files(files, summary):
                 )
             elif res["upload"]["result"] == "Success":
                 os.rename("upload/" + currentfile, "done/" + currentfile)
+
+        if progress != len(files):
+            time.sleep(float(config["WIKI"]["UploadDelay"]))
 
     print(
         "\nUpload complete! Please check your logs for more details about failed uploads~"
