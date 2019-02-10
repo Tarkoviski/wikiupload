@@ -1,14 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import configparser
-import json
 import logging
 import os
 from os import listdir
 from os.path import isfile, join
 import time
 from time import strftime
-import sys
 import requests
 
 config = configparser.ConfigParser()
@@ -17,6 +15,7 @@ config.read("config.ini")
 username = config["USER"]["Username"]
 password = config["USER"]["Password"]
 wiki_url = config["WIKI"]["Url"]
+upload_delay = float(config["WIKI"]["UploadDelay"])
 
 session = requests.Session()
 
@@ -55,6 +54,7 @@ def log_in():
 
 def upload_files(files, summary):
     progress = 0
+    errors = 0
 
     for currentfile in files:
         progress += 1
@@ -66,7 +66,7 @@ def upload_files(files, summary):
             )
         )
 
-        params = {
+        payload_data = {
             "action": "upload",
             "filename": currentfile,
             "comment": summary,
@@ -76,42 +76,51 @@ def upload_files(files, summary):
             "format": "json",
         }
 
-        params_file = {
+        payload_file = {
             "file": (currentfile, filecontents)
         }
 
-        request = session.post(wiki_url, data=params, files=params_file)
+        request = session.post(wiki_url, data=payload_data, files=payload_file)
 
-        res = json.loads(request.text)
+        res = request.json()
 
         filecontents.close()
 
         if "error" in res:
             logging.error(
-                'Failed to upload "{0}": Got {1}: {2}'.format(
+                "Failed to upload '{0}': Got {1}: {2}".format(
                     currentfile, res["error"]["code"], res["error"]["info"]
                 )
             )
+
+            errors += 1
         else:
             if res["upload"]["result"] == "Warning":
                 logging.warning(
-                    'Failed to upload "{0}": Got {1}'.format(
+                    "Failed to upload '{0}': Got {1}".format(
                         currentfile, str(res["upload"]["warnings"])
                     )
                 )
+                
+                errors += 1
             elif res["upload"]["result"] == "Success":
                 os.rename("upload/" + currentfile, "done/" + currentfile)
 
         if progress != len(files):
-            time.sleep(float(config["WIKI"]["UploadDelay"]))
+            time.sleep(upload_delay)
 
-    print(
-        "\nUpload complete! Please check your logs for more details about failed uploads~"
-    )
+    if errors != 0:
+        print(
+            "\nUpload complete with {0} error(s)! Please check your logs for more details.".format(
+                errors
+            )
+        )
+    else:
+        print("\nUpload complete with no errors!")
 
 
 def check_files():
-    # Creates the directories if they don't exist, just to avoid exceptions
+    # Creates the directories if they don't exist
     if not os.path.exists("upload"):
         print("Creating directory for uploads...")
         os.makedirs("upload")
@@ -128,7 +137,7 @@ def check_files():
     # If 0 files are found, give error and exit.
     if not filelist:
         print("No files found, exiting.")
-        sys.exit()
+        exit()
 
     filelist.sort(key=str.lower)
 
